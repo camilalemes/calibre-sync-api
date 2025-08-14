@@ -1,0 +1,44 @@
+services:
+  calibre-sync:
+    build: .
+    container_name: calibre-sync
+    restart: unless-stopped
+    environment:
+      # Calibre Library Configuration (Local Windows paths)
+      - CALIBRE_LIBRARY_PATH=C:/Users/YourUser/Documents/Calibre Library
+      - REPLICA_PATHS=C:/Users/YourUser/Documents/ebook-replicas,//192.168.50.216/media/ebook-replicas
+      - CALIBRE_CMD_PATH=calibredb
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - LOG_FILE=/config/logs/app.log
+      
+    volumes:
+      # Config and logs
+      - ./config:/config
+      
+      # Calibre library (local Windows path)
+      - C:/Users/YourUser/Documents/Calibre Library:/app/data/calibre-library
+      
+      # Local replica
+      - C:/Users/YourUser/Documents/ebook-replicas:/app/data/local-replica
+      
+      # NAS replica (via SMB)
+      - //192.168.50.216/media/ebook-replicas:/app/data/nas-replica
+    
+    ports:
+      - "8001:8001"
+    
+    networks:
+      - calibre-net
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  calibre-net:
+    driver: bridge
