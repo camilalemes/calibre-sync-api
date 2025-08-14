@@ -86,8 +86,10 @@ def setup_cors_middleware(app, allowed_origins: list = None) -> None:
         allowed_origins = [
             "http://localhost:3000",
             "http://localhost:4200",
+            "http://localhost:4201",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:4200",
+            "http://127.0.0.1:4201",
         ]
     
     app.add_middleware(

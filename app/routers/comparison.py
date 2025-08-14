@@ -188,27 +188,24 @@ async def compare_all_libraries(
             try:
                 logger.info(f"Comparing with {replica_name}: {replica_path}")
                 
-                # Get replica books using the books router logic
-                # Import and use the books router function directly
-                from . import books as books_router
-                replica_location = f"replica{i+1}"
-                
-                # Call the list_books function for this replica
+                # Get replica books directly using CalibreService
                 try:
-                    replica_books_collection = await books_router.list_books(replica_location, calibre_service, sync_service)
-                    replica_books = replica_books_collection.books
+                    # Create a temporary CalibreService instance for the replica location
+                    from ..services.calibre_service import CalibreService
+                    replica_service = CalibreService(library_path=replica_path)
+                    replica_books = replica_service.get_books()
                 except Exception as e:
                     logger.warning(f"Could not get replica books for {replica_name}: {e}")
                     replica_books = []
                 
                 # Filter out system files from replica books
                 filtered_replica_books = [book for book in replica_books 
-                                         if not (book.title.lower() in ['metadata', 'metadata.db'] or 
-                                                any(fmt.lower() == 'db' for fmt in book.formats))]
+                                         if not (book["title"].lower() in ['metadata', 'metadata.db'] or 
+                                                any(fmt.lower() == 'db' for fmt in book.get("formats", [])))]
                 
                 # Since parsing is now fixed, use simple ID-based comparison
                 calibre_ids = {book["id"] for book in calibre_books}
-                replica_ids = {book.id for book in filtered_replica_books}
+                replica_ids = {book["id"] for book in filtered_replica_books}
                 
                 # Find differences using direct ID comparison
                 unique_to_calibre = calibre_ids - replica_ids
@@ -241,17 +238,17 @@ async def compare_all_libraries(
                 
                 unique_to_replica_books = []
                 for book in filtered_replica_books:
-                    if book.id in unique_to_replica:
+                    if book["id"] in unique_to_replica:
                         # Format file extensions consistently (uppercase)
-                        formatted_formats = [fmt.upper() for fmt in book.formats] if book.formats else []
+                        formatted_formats = [fmt.upper() for fmt in book.get("formats", [])] if book.get("formats") else []
                         
                         unique_to_replica_books.append({
-                            "id": book.id,
-                            "title": book.title,
-                            "authors": book.authors,
+                            "id": book["id"],
+                            "title": book["title"],
+                            "authors": book.get("authors", []),
                             "formats": formatted_formats,
-                            "size": getattr(book, 'formatted_size', None),
-                            "last_modified": getattr(book, 'formatted_date', None),
+                            "size": book.get('formatted_size', None),
+                            "last_modified": book.get('formatted_date', None),
                             "location": f"{replica_name} Only"
                         })
                         if len(unique_to_replica_books) >= 20:
